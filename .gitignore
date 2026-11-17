@@ -1,0 +1,17 @@
+# datos: se regeneran con `uv run novaretail generate`
+data/raw/*
+data/quarantine/*
+data/clean/*
+data/_meta/*
+!data/**/.gitkeep
+
+# entorno
+.venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.pytest_cache/
+
+# secretos (claves de API, credenciales del warehouse)
+.env
+*.key

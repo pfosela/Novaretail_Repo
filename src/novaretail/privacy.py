@@ -1,9 +1,4 @@
-"""Privacidad y triaje de tickets de NovaRetail (Persona 4).
-
-Se mantiene la lógica reutilizable en este módulo. El notebook muestra únicamente
-textos enmascarados y métricas agregadas. El conjunto original es sintético,
-pero el tratamiento diseñado también minimiza la exposición de datos personales.
-"""
+"""Privacidad y triaje de tickets de NovaRetail"""
 from __future__ import annotations
 
 import re
@@ -28,7 +23,7 @@ PATTERNS = {
         re.IGNORECASE,
     ),
 }
-# Los patrones específicos van antes que el genérico de teléfonos/tarjetas.
+
 MASK_ORDER = ("EMAIL", "IBAN", "DNI", "TARJETA", "TARJETA_COMPLETA", "DIRECCION", "TELEFONO")
 ORDER_ID = re.compile(r"\bNR\d{7}\b", re.IGNORECASE)
 POSTAL_CITY = re.compile(r",\s*\d{5}\s+[A-Za-zÁÉÍÓÚÜÑáéíóúüñ-]+", re.IGNORECASE)
@@ -43,7 +38,6 @@ ADDRESS_INTRO = re.compile(
 
 
 def _mask_postal_addresses(text: str) -> str:
-    """El código postal permite detectar direcciones con tipos de vía no previstos."""
     for match in reversed(list(POSTAL_CITY.finditer(text))):
         before = text[:match.start()]
         intro = list(ADDRESS_INTRO.finditer(before))
@@ -55,8 +49,6 @@ def _mask_postal_addresses(text: str) -> str:
         elif street_start > -1 and match.start() - street_start <= 120:
             start = street_start
         else:
-            # Si falla la introducción por errores tipográficos, se enmascara
-            # el fragmento desde el último separador y no solo el CP.
             start = max(before.rfind(". "), before.rfind("? "), before.rfind("! ")) + 2
         text = text[:start] + "[DIRECCION]" + text[match.end():]
     return text
@@ -73,7 +65,6 @@ def _normalize(text: str) -> str:
 
 
 def _customer_index(customers: pd.DataFrame | None, orders: pd.DataFrame | None) -> tuple[dict, dict, dict, dict]:
-    """Índices temporales para detectar nombres concretos; nunca se exportan."""
     if customers is None or customers.empty:
         return {}, {}, {}, {}
     required = {"customer_id", "first_name", "last_name"}
@@ -107,17 +98,11 @@ def _linked_customer(text: str, emails: dict, phones: dict, order_ids: dict) -> 
 
 
 def mask_text(text: str, *, known_name: str | None = None) -> str:
-    """Enmascara PII reconocible; conserva ID de pedido para permitir triaje.
-
-    La regex sola no garantiza anonimización: faltas de ortografía y direcciones
-    fuera de patrón requieren supervisión humana antes de publicar los datos.
-    """
     if not isinstance(text, str):
         return ""
     out = _mask_postal_addresses(text)
     if known_name:
         out = re.sub(r"(?<!\w)" + re.escape(known_name) + r"(?!\w)", "[NOMBRE]", out, flags=re.I)
-    # Fallback para nombres presentados como «soy Nombre Apellido».
     out = NAME_AFTER_SOY.sub(lambda m: m.group(0)[: m.start(1) - m.start(0)] + "[NOMBRE]", out)
     for label in MASK_ORDER:
         pattern = PATTERNS[label]
@@ -133,11 +118,6 @@ def mask_tickets(
     customers: pd.DataFrame | None = None,
     orders: pd.DataFrame | None = None,
 ) -> pd.DataFrame:
-    """Devuelve tickets sin texto libre original, con `text_masked`.
-
-    Clientes y pedidos se usan solo durante la transformación para localizar
-    nombres completos sin necesitar NER externo.
-    """
     if "text" not in tickets.columns:
         raise ValueError("Se espera la columna 'text' en tickets")
     names, emails, phones, order_ids = _customer_index(customers, orders)
@@ -150,7 +130,6 @@ def mask_tickets(
     return out.drop(columns=["text"])
 
 
-# Indicadores identificables a través del lenguaje, no mediante datos de cliente.
 CATEGORY_RULES = (
     ("proteccion_datos", (r"\brgpd\b", r"datos personales", r"supresi[oó]n", r"publicidad", r"mis datos", r"dadme de baja", r"daos de baja")),
     ("cobro_duplicado", (r"cobr(?:ado|o|ais).{0,16}dos veces", r"cargo duplicado", r"cobro duplicado", r"devolv(?:ed|er).{0,12}cargo")),
@@ -171,7 +150,6 @@ BASE_PRIORITY = {
 
 
 def classify_ticket(text_masked: str) -> tuple[str, str]:
-    """Clasifica solo el texto enmascarado (categoría y prioridad)."""
     if not isinstance(text_masked, str) or not text_masked.strip():
         return "sin_clasificar", "alta"
     txt = _normalize(text_masked)
@@ -200,11 +178,6 @@ def classify_tickets(masked: pd.DataFrame) -> pd.DataFrame:
 
 
 def link_ticket_segments(masked: pd.DataFrame, orders: pd.DataFrame, customers: pd.DataFrame) -> pd.DataFrame:
-    """Asigna segmento solo cuando el identificador de pedido es recuperable.
-
-    No se utiliza el segmento como variable de entrada del clasificador: se
-    conserva únicamente para auditoría de equidad.
-    """
     lookup = orders[["order_id", "customer_id"]].drop_duplicates("order_id").merge(
         customers[["customer_id", "segment"]], on="customer_id", how="left"
     )
@@ -217,7 +190,6 @@ def link_ticket_segments(masked: pd.DataFrame, orders: pd.DataFrame, customers: 
 
 
 def evaluate_classification(predicted: pd.DataFrame, labels: pd.DataFrame) -> dict[str, pd.DataFrame | float | int]:
-    """Audita rendimiento contra labels sintéticos; nunca entrena con ellos."""
     frame = predicted.merge(labels[["ticket_id", "category", "priority"]], on="ticket_id", how="inner", validate="one_to_one")
     if len(frame) != len(predicted):
         raise ValueError("Faltan etiquetas para parte de los tickets")
@@ -252,12 +224,6 @@ def evaluate_classification(predicted: pd.DataFrame, labels: pd.DataFrame) -> di
 
 
 def audit_masking(raw: pd.DataFrame, masked: pd.DataFrame, customers: pd.DataFrame, orders: pd.DataFrame) -> pd.DataFrame:
-    """Comprobación independiente: ocurrencias observables de PII sintética antes/después.
-
-    Incluye valores exactos conocidos de los clientes vinculables y formatos
-    reconocibles de DNI, IBAN, teléfono, dirección y tarjeta. No mide errores
-    que también se escapan de los detectores de la auditoría.
-    """
     names, emails, phones, order_ids = _customer_index(customers, orders)
     compare = raw[["ticket_id", "text"]].merge(
         masked[["ticket_id", "text_masked"]], on="ticket_id", validate="one_to_one"
@@ -289,11 +255,6 @@ def audit_masking(raw: pd.DataFrame, masked: pd.DataFrame, customers: pd.DataFra
 
 
 def personal_data_inventory(datasets: dict[str, pd.DataFrame] | None = None) -> pd.DataFrame:
-    """Inventario propuesto: retenciones sujetas a aprobación por el DPO.
-
-    Si se pasan los datasets, filtra a columnas existentes en el proyecto.
-    No genera una copia con información de clientes.
-    """
     entries = [
         ("customers", "customer_id", "Identificador seudónimo", "Vincular pedidos y soporte", "Contrato, art. 6.1.b RGPD", "Vigencia de relación + revisión DPO", "Atención/Operaciones"),
         ("customers", "first_name", "Identificativo", "Identificación y atención", "Contrato, art. 6.1.b RGPD", "Vigencia de relación + revisión DPO", "Atención"),

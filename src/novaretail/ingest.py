@@ -52,9 +52,7 @@ def parse_eur(text: str | None) -> float | None:
     return float(t) if t else None
 
 
-# ----------------------------------------------------------------------------
 # Catálogo web (semiestructurado: HTML)
-# ----------------------------------------------------------------------------
 def load_catalog() -> pd.DataFrame:
     """Extrae las fichas de producto de catalog/page_XX.html (scraping con BeautifulSoup)."""
     from bs4 import BeautifulSoup
@@ -76,9 +74,7 @@ def load_catalog() -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-# ----------------------------------------------------------------------------
 # Facturas de proveedor (semiestructurado: PDF)
-# ----------------------------------------------------------------------------
 _INVOICE_PATTERNS = {
     "invoice_number": r"FACTURA N\S*\s+(\S+)",
     "invoice_date": r"Fecha:\s*(\d{2}/\d{2}/\d{4})",

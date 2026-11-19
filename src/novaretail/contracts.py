@@ -28,9 +28,7 @@ RECONCILE_TOL_PCT = 0.01
 CHANNEL_FIXES = {"store": "tienda", "market_place": "marketplace"}
 
 
-# ----------------------------------------------------------------------------
 # Informe de calidad
-# ----------------------------------------------------------------------------
 @dataclass
 class QualityReport:
     dataset: str
@@ -103,9 +101,7 @@ def _named(fn, name: str) -> pa.Check:
     return pa.Check(fn, name=name, element_wise=False)
 
 
-# ----------------------------------------------------------------------------
 # Utilidades de tipos
-# ----------------------------------------------------------------------------
 def parse_ts(s: pd.Series) -> pd.Series:
     """Fechas ISO (con o sin fracciones de segundo) o europeas (dd/mm/aaaa hh:mm).
 
@@ -120,9 +116,7 @@ def _strip_lower(s: pd.Series) -> pd.Series:
     return s.astype("string").str.strip().str.lower()
 
 
-# ----------------------------------------------------------------------------
 # SALES (líneas de pedido)
-# ----------------------------------------------------------------------------
 SALES_SCHEMA = pa.DataFrameSchema(
     {
         "sale_id": pa.Column(str, unique=True),
@@ -164,9 +158,7 @@ def line_revenue(sales: pd.DataFrame) -> pd.Series:
     return (sales["unit_price_eur"] * sales["units"] * (1 - sales["discount_pct"] / 100)).round(2)
 
 
-# ----------------------------------------------------------------------------
 # ORDERS
-# ----------------------------------------------------------------------------
 ORDERS_SCHEMA = pa.DataFrameSchema(
     {
         "order_id": pa.Column(str, pa.Check.str_matches(r"^NR\d{7}$"), unique=True),
@@ -244,9 +236,7 @@ def clean_orders(raw: pd.DataFrame, valid_lines: pd.DataFrame | None = None,
     return valid, q, rep
 
 
-# ----------------------------------------------------------------------------
 # FULFILMENT EVENTS
-# ----------------------------------------------------------------------------
 EVENTS_SCHEMA = pa.DataFrameSchema(
     {
         "order_id": pa.Column(str),
@@ -297,9 +287,7 @@ def clean_events(raw: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, Quality
     return valid.sort_values(["order_id", "event_ts"]).reset_index(drop=True), q, rep
 
 
-# ----------------------------------------------------------------------------
 # INVENTORY (snapshot semanal)
-# ----------------------------------------------------------------------------
 INVENTORY_SCHEMA = pa.DataFrameSchema(
     {
         "store_id": pa.Column(str),
@@ -334,9 +322,7 @@ def clean_inventory(raw: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, Qual
     return valid, q, rep
 
 
-# ----------------------------------------------------------------------------
 # Cobertura: ¿detectamos todos los errores que inyectó el generador?
-# ----------------------------------------------------------------------------
 # error inyectado -> (cómo lo trata el contrato, motivo/corrección/aviso que lo recoge)
 COVERAGE_MAP = {
     "orders": {

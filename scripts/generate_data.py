@@ -19,9 +19,7 @@ import numpy as np
 import pandas as pd
 from faker import Faker
 
-# ----------------------------------------------------------------------------
 # Parámetros del negocio
-# ----------------------------------------------------------------------------
 START = pd.Timestamp("2025-01-01")
 END = pd.Timestamp("2026-10-31 23:59:59")
 
@@ -90,9 +88,7 @@ DISCOUNT_P = {
 }
 
 
-# ----------------------------------------------------------------------------
 # Utilidades
-# ----------------------------------------------------------------------------
 def _norm(x):
     x = np.asarray(x, dtype=float)
     return x / x.sum()
@@ -150,9 +146,7 @@ def skip_sunday(ts: pd.Series, hour: int, rng: np.random.Generator) -> pd.Series
     return out
 
 
-# ----------------------------------------------------------------------------
 # Dimensiones
-# ----------------------------------------------------------------------------
 def build_stores(rng):
     rows, i = [], 1
     for region, cities in REGIONS.items():
@@ -242,9 +236,7 @@ def build_customers(rng, fake: Faker, n=30000):
     return df, hidden
 
 
-# ----------------------------------------------------------------------------
 # Pedidos y ventas
-# ----------------------------------------------------------------------------
 def build_orders_and_sales(rng, stores, products, pop, customers, hidden, scale):
     days = pd.date_range(START, END.normalize(), freq="D")
     base = 105 * scale
@@ -461,9 +453,7 @@ def finish_orders(rng, order, ful):
     return order[cols].copy()
 
 
-# ----------------------------------------------------------------------------
 # Errores de calidad deliberados
-# ----------------------------------------------------------------------------
 def inject_order_errors(rng, orders):
     df = orders.copy()
     for c in ["created_ts", "promised_ts", "delivered_ts"]:
@@ -582,9 +572,7 @@ def inject_event_errors(rng, events):
     return df.reset_index(drop=True), issues
 
 
-# ----------------------------------------------------------------------------
 # Inventario semanal
-# ----------------------------------------------------------------------------
 def build_inventory(rng, stores, products, sales):
     combos = []
     pop_rank = sales.groupby("product_id")["units"].sum().reindex(products["product_id"]).fillna(0)
@@ -658,9 +646,7 @@ def build_inventory(rng, stores, products, sales):
     return inv, issues
 
 
-# ----------------------------------------------------------------------------
 # Tickets de soporte (texto libre con datos personales sintéticos)
-# ----------------------------------------------------------------------------
 TEMPLATES = {
     "retraso_entrega": [
         "Hola, soy {nombre}. Mi pedido {pedido} tenía que llegar hace {dias} días y sigue sin aparecer. Mi teléfono es {telefono}. ¿Qué está pasando?",
@@ -792,9 +778,7 @@ def build_tickets(rng, fake, orders_clean, customers, products, stores, scale):
     return tickets, lab
 
 
-# ----------------------------------------------------------------------------
 # Facturas PDF y catálogo web
-# ----------------------------------------------------------------------------
 SUPPLIERS = [
     ("Distribuciones Tecnova S.L.", "B12345674", ["Electronica"]),
     ("Textiles del Levante S.A.", "A23456785", ["Moda"]),
@@ -894,9 +878,7 @@ def build_catalog(rng, products, out_dir: Path, per_page=50):
     return pages
 
 
-# ----------------------------------------------------------------------------
 # Main
-# ----------------------------------------------------------------------------
 def main():
     ap = argparse.ArgumentParser(description="Generador de datos sintéticos de NovaRetail")
     ap.add_argument("--seed", type=int, default=42)

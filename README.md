@@ -7,9 +7,11 @@ Proyecto de grupo de la Unit 17 (Business Process Support), Pearson HND Applied 
 ```bash
 git clone <url-del-repo> && cd novaretail
 uv sync                       # instala Python y dependencias exactas (uv.lock)
-uv run novaretail all         # genera data/raw y valida -> data/clean + data/quarantine
+uv run novaretail all         # genera data/raw, valida -> data/clean + data/quarantine y descarga la fuente externa
 uv run pytest                 # tests
 ```
+
+Comandos sueltos: `uv run novaretail generate`, `validate` (para con código 1 si falla una regla crítica) y `external` (Open-Meteo, con caché).
 
 Para los notebooks, abrid `notebooks/` en VS Code o en Jupyter con el kernel del `.venv`.
 

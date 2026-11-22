@@ -24,7 +24,10 @@ dependencies = [
 novaretail = "novaretail.cli:main"
 
 [dependency-groups]
-dev = ["pytest>=8"]
+dev = [
+    "nbconvert>=7.17.2",
+    "pytest>=8",
+]
 
 [build-system]
 requires = ["hatchling"]

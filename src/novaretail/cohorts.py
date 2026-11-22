@@ -60,7 +60,7 @@ def retention_matrix(orders: pd.DataFrame, customers: pd.DataFrame, by: str | No
     max_observable = np.array([(max_order_month - cm).n for cm in c_months])
     for p in all_periods:
         observable_mask = p <= max_observable
-        col_vals = mat[p].to_numpy(dtype=float)
+        col_vals = mat[p].to_numpy(dtype=float, copy=True)
         col_vals[observable_mask & np.isnan(col_vals)] = 0.0
         col_vals[~observable_mask] = np.nan
         mat[p] = col_vals
